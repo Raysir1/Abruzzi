@@ -1,0 +1,90 @@
+// Import Three.js and required loaders
+import * as THREE from 'three';
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+
+let scene, camera, renderer, controls, suit, mixer;
+const canvas = document.getElementById('viewer');
+
+// Show Loading Message
+const loadingText = document.createElement('div');
+loadingText.innerText = "Loading Racing Suit...";
+loadingText.style.position = "absolute";
+loadingText.style.top = "50%";
+loadingText.style.left = "50%";
+loadingText.style.transform = "translate(-50%, -50%)";
+loadingText.style.color = "white";
+loadingText.style.fontSize = "20px";
+document.body.appendChild(loadingText);
+
+// Initialize Scene
+function init() {
+    scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x222222); // Dark background
+
+    camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    camera.position.set(0, 1.5, 3);
+
+    renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    document.body.appendChild(renderer.domElement);
+
+    // Lighting
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+    directionalLight.position.set(2, 5, 3);
+    scene.add(ambientLight, directionalLight);
+
+    // Orbit Controls (Enable Rotation & Zoom)
+    controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.autoRotate = true; // Auto-Rotate Effect
+    controls.autoRotateSpeed = 1.0;
+
+    // Load Default Model
+    loadModel('models/male_suit.glb');
+
+    animate();
+}
+
+// Load 3D Model with Animation Support
+function loadModel(modelPath) {
+    const loader = new GLTFLoader();
+    loader.load(modelPath, (gltf) => {
+        if (suit) scene.remove(suit);
+
+        suit = gltf.scene;
+        suit.rotation.y = Math.PI; // Adjust initial rotation
+        scene.add(suit);
+
+        // If model has animations
+        if (gltf.animations.length > 0) {
+            mixer = new THREE.AnimationMixer(suit);
+            const action = mixer.clipAction(gltf.animations[0]);
+            action.play();
+        }
+
+        loadingText.style.display = "none"; // Hide loading message
+    });
+}
+
+// Animation Loop
+function animate() {
+    requestAnimationFrame(animate);
+    if (mixer) mixer.update(0.01); // Update animation
+    controls.update();
+    renderer.render(scene, camera);
+}
+
+// Resize Handler
+window.addEventListener('resize', () => {
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+});
+
+// UI Button Handlers
+document.getElementById('maleBtn').addEventListener('click', () => loadModel('models/male_suit.glb'));
+document.getElementById('femaleBtn').addEventListener('click', () => loadModel('models/female_suit.glb'));
+
+init();
